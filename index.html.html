@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMR Aero Technic — Financial Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --surface: #111621;
+    --surface2: #181e2d;
+    --border: rgba(255,255,255,0.07);
+    --accent: #4fc3f7;
+    --accent2: #7c4dff;
+    --accent3: #00e5a0;
+    --accent4: #ff6b6b;
+    --accent5: #ffd54f;
+    --text: #e8edf5;
+    --muted: #7a8499;
+    --positive: #00e5a0;
+    --negative: #ff6b6b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG texture */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background: radial-gradient(ellipse 80% 50% at 20% 10%, rgba(76,195,247,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124,77,255,0.07) 0%, transparent 60%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; position:relative; z-index:1; }
+
+  /* HEADER */
+  header {
+    padding: 32px 0 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .header-inner { display:flex; align-items:flex-end; justify-content:space-between; padding-bottom: 20px; flex-wrap:wrap; gap:16px; }
+  .brand-line { display:flex; align-items:center; gap:12px; }
+  .logo-mark {
+    width:42px; height:42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:#fff;
+    letter-spacing:-1px;
+  }
+  .company-name { font-family:'DM Serif Display'; font-size:22px; color:var(--text); letter-spacing:0.3px; }
+  .company-sub { font-size:12px; color:var(--muted); font-family:'DM Mono', monospace; margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
+  .header-right { display:flex; align-items:center; gap:8px; }
+  .tag { padding: 5px 12px; border-radius:20px; font-size:11px; font-family:'DM Mono',monospace; letter-spacing:1px; text-transform:uppercase; }
+  .tag-sip { background:rgba(76,195,247,0.12); color:var(--accent); border:1px solid rgba(76,195,247,0.2); }
+  .tag-mro { background:rgba(0,229,160,0.1); color:var(--accent3); border:1px solid rgba(0,229,160,0.2); }
+
+  /* TABS */
+  .tabs { display:flex; gap:4px; margin-bottom:28px; flex-wrap:wrap; }
+  .tab {
+    padding: 9px 20px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;
+    border:1px solid var(--border); color:var(--muted); background:transparent; transition:all 0.2s;
+    letter-spacing:0.2px;
+  }
+  .tab:hover { color:var(--text); background:var(--surface); }
+  .tab.active { background:var(--accent); color:#0a0d14; border-color:transparent; font-weight:600; }
+
+  /* KPI STRIP */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; margin-bottom:28px; }
+  .kpi-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px; position:relative; overflow:hidden; transition: transform 0.2s, border-color 0.2s;
+  }
+  .kpi-card:hover { transform:translateY(-2px); border-color:rgba(255,255,255,0.14); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .kpi-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-family:'DM Mono',monospace; margin-bottom:8px; }
+  .kpi-value { font-family:'DM Serif Display'; font-size:26px; color:var(--text); line-height:1; }
+  .kpi-value .unit { font-size:13px; font-family:'Space Grotesk',sans-serif; color:var(--muted); margin-left:3px; }
+  .kpi-change { font-size:12px; margin-top:6px; font-family:'DM Mono',monospace; }
+  .kpi-change.up { color:var(--positive); }
+  .kpi-change.down { color:var(--negative); }
+
+  /* SECTION GRID */
+  .section-title { font-family:'DM Serif Display'; font-size:16px; color:var(--text); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .charts-2col { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px; }
+  .charts-3col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-bottom:20px; }
+  .charts-full { margin-bottom:20px; }
+  @media(max-width:900px) { .charts-2col,.charts-3col { grid-template-columns:1fr; } }
+
+  .chart-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px;
+  }
+  .chart-card-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:16px; }
+  .chart-wrap { position:relative; }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); padding:8px 14px; text-align:right; border-bottom:1px solid var(--border); }
+  th:first-child { text-align:left; }
+  td { padding:10px 14px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.04); font-size:13px; }
+  td:first-child { text-align:left; color:var(--muted); font-size:12px; }
+  tr:hover td { background:rgba(255,255,255,0.025); }
+  .row-header td { color:var(--text) !important; font-weight:600; font-size:13px !important; background:rgba(76,195,247,0.04); }
+  .positive { color:var(--positive); }
+  .negative { color:var(--negative); }
+  .neutral { color:var(--text); }
+
+  /* RATIO TABLE */
+  .ratio-badge {
+    display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px;
+    font-family:'DM Mono',monospace;
+  }
+  .badge-good { background:rgba(0,229,160,0.12); color:var(--positive); }
+  .badge-warn { background:rgba(255,213,79,0.12); color:var(--accent5); }
+  .badge-bad { background:rgba(255,107,107,0.12); color:var(--negative); }
+
+  /* INTERPRETATION BOX */
+  .interp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:28px; }
+  .interp-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px;
+  }
+  .interp-cat { font-size:10px; font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  .interp-name { font-size:14px; font-weight:600; margin-bottom:8px; color:var(--text); }
+  .interp-text { font-size:12px; color:var(--muted); line-height:1.6; }
+  .interp-trend { display:flex; gap:6px; margin-top:10px; align-items:center; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--positive); }
+  .dot.warn { background:var(--accent5); }
+  .dot.bad { background:var(--negative); }
+
+  /* PAGE SECTIONS */
+  .page { display:none; }
+  .page.active { display:block; }
+
+  footer { padding:32px 0; text-align:center; font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; letter-spacing:1px; border-top:1px solid var(--border); margin-top:40px; }
+
+  /* WATERFALL */
+  .wf-bar-pos { fill: var(--positive); }
+  .wf-bar-neg { fill: var(--negative); }
+  .wf-bar-total { fill: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div>
+        <div class="brand-line">
+          <div class="logo-mark">GA</div>
+          <div>
+            <div class="company-name">GMR Aero Technic</div>
+            <div class="company-sub">Financial Analysis · FY21–FY25 · ₹ Lakhs</div>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="tag tag-sip">SIP Analysis</span>
+        <span class="tag tag-mro">MRO Sector</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('overview')">📊 Overview</button>
+    <button class="tab" onclick="showPage('pnl')">📈 P&amp;L</button>
+    <button class="tab" onclick="showPage('balance')">🏦 Balance Sheet</button>
+    <button class="tab" onclick="showPage('cashflow')">💸 Cash Flow</button>
+    <button class="tab" onclick="showPage('ratios')">⚖️ Ratios</button>
+    <button class="tab" onclick="showPage('trends')">🔭 Trends</button>
+  </div>
+
+  <!-- KPI STRIP (always visible) -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--accent-color:#4fc3f7">
+      <div class="kpi-label">Revenue FY25</div>
+      <div class="kpi-value">75,299<span class="unit">₹L</span></div>
+      <div class="kpi-change up">▲ 61.3% YoY</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#00e5a0">
+      <div class="kpi-label">EBITDA FY25</div>
+      <div class="kpi-value">27,384<span class="unit">₹L</span></div>
+      <div class="kpi-change up">▲ 36.4% Margin</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#ffd54f">
+      <div class="kpi-label">Net Profit FY25</div>
+      <div class="kpi-value">19,141<span class="unit">₹L</span></div>
+      <div class="kpi-change up">▲ 25.4% Margin</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#7c4dff">
+      <div class="kpi-label">Total Assets FY25</div>
+      <div class="kpi-value">80,736<span class="unit">₹L</span></div>
+      <div class="kpi-change up">▲ from 52,436</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#ff6b6b">
+      <div class="kpi-label">Debt/Equity FY25</div>
+      <div class="kpi-value">1.01<span class="unit">x</span></div>
+      <div class="kpi-change up">▲ from 145x in FY21</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#4fc3f7">
+      <div class="kpi-label">Interest Coverage</div>
+      <div class="kpi-value">7.13<span class="unit">x</span></div>
+      <div class="kpi-change up">▲ from 1.2x in FY21</div>
+    </div>
+  </div>
+
+  <!-- OVERVIEW PAGE -->
+  <div id="page-overview" class="page active">
+    <div class="section-title">Revenue & Profitability</div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">Revenue from Operations (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="revenueChart" height="200"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">EBITDA vs Net Profit (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="profitChart" height="200"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">Margin Trends (%)</div>
+        <div class="chart-wrap"><canvas id="marginChart" height="200"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Debt Reduction Journey (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="debtChart" height="200"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:8px">Key Interpretations</div>
+    <div class="interp-grid">
+      <div class="interp-card">
+        <div class="interp-cat" style="color:var(--accent)">Revenue</div>
+        <div class="interp-name">Explosive Growth in FY25</div>
+        <div class="interp-text">Revenue surged 61.3% YoY to ₹75,299L in FY25 — the strongest single-year jump in 5 years, reflecting significant MRO order wins and capacity ramp-up.</div>
+        <div class="interp-trend"><div class="dot"></div><span style="font-size:11px;color:var(--positive)">Strong upward trend</span></div>
+      </div>
+      <div class="interp-card">
+        <div class="interp-cat" style="color:var(--accent3)">Profitability</div>
+        <div class="interp-name">Margin Expansion Story</div>
+        <div class="interp-text">EBITDA margins improved from 19.9% in FY21 to 36.4% in FY25. Net profit margin expanded from 1.7% to 25.4% — a remarkable 15x improvement in earnings quality.</div>
+        <div class="interp-trend"><div class="dot"></div><span style="font-size:11px;color:var(--positive)">Excellent efficiency gains</span></div>
+      </div>
+      <div class="interp-card">
+        <div class="interp-cat" style="color:var(--accent5)">Leverage</div>
+        <div class="interp-name">Deleveraging in Progress</div>
+        <div class="interp-text">Debt-to-Equity collapsed from 145x (FY21) to 1.0x (FY25). Total debt declined from ₹33,339L to ₹27,898L while equity grew 120x — a structural transformation.</div>
+        <div class="interp-trend"><div class="dot"></div><span style="font-size:11px;color:var(--positive)">Rapidly improving</span></div>
+      </div>
+      <div class="interp-card">
+        <div class="interp-cat" style="color:var(--accent2)">Liquidity</div>
+        <div class="interp-name">Liquidity Strengthened</div>
+        <div class="interp-text">Current ratio improved to 2.08x in FY25 (from 1.25x). Quick ratio reached 1.70x — both comfortably above 1x, signaling strong short-term obligations coverage.</div>
+        <div class="interp-trend"><div class="dot"></div><span style="font-size:11px;color:var(--positive)">Comfortable position</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P&L PAGE -->
+  <div id="page-pnl" class="page">
+    <div class="section-title">Income Statement</div>
+    <div class="charts-2col" style="margin-bottom:20px">
+      <div class="chart-card">
+        <div class="chart-card-title">Revenue vs Total Expenses (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="revExpChart" height="220"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Cost Breakdown FY25 (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="costDonut" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card charts-full">
+      <div class="chart-card-title">P&L Waterfall — FY21 → FY25 (₹ Lakhs)</div>
+      <div class="chart-wrap"><canvas id="waterfallChart" height="160"></canvas></div>
+    </div>
+    <div class="chart-card" style="margin-top:18px">
+      <div class="chart-card-title">Detailed Income Statement</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Line Item</th><th>FY21</th><th>FY22</th><th>FY23</th><th>FY24</th><th>FY25</th>
+          </tr></thead>
+          <tbody>
+            <tr class="row-header"><td>Revenue from Operations</td><td>32,565</td><td>34,905</td><td>38,240</td><td>46,670</td><td>75,299</td></tr>
+            <tr><td>Revenue Growth %</td><td>—</td><td class="positive">7.2%</td><td class="positive">9.6%</td><td class="positive">22.0%</td><td class="positive">61.3%</td></tr>
+            <tr><td>Other Income</td><td>775</td><td>719</td><td>971</td><td>1,705</td><td>2,425</td></tr>
+            <tr class="row-header"><td>Total Income</td><td>33,340</td><td>35,624</td><td>39,211</td><td>48,375</td><td>77,724</td></tr>
+            <tr><td>Operations & Maintenance</td><td>258</td><td>543</td><td>1,740</td><td>227</td><td>815</td></tr>
+            <tr><td>Cost of Stores & Spares</td><td>8,876</td><td>8,297</td><td>7,619</td><td>6,400</td><td>12,277</td></tr>
+            <tr><td>Employee Benefit Expense</td><td>8,639</td><td>9,836</td><td>11,604</td><td>13,097</td><td>17,478</td></tr>
+            <tr><td>Other Expenses</td><td>9,102</td><td>10,239</td><td>11,097</td><td>15,765</td><td>19,770</td></tr>
+            <tr class="row-header"><td>Total Expenses</td><td>26,875</td><td>28,914</td><td>32,061</td><td>35,489</td><td>50,340</td></tr>
+            <tr class="row-header"><td>EBITDA</td><td>6,465</td><td>6,710</td><td>7,150</td><td>12,886</td><td>27,384</td></tr>
+            <tr><td>EBITDA Margin</td><td>19.9%</td><td>19.2%</td><td>18.7%</td><td>27.6%</td><td class="positive">36.4%</td></tr>
+            <tr><td>Depreciation & Amortisation</td><td>3,205</td><td>3,576</td><td>2,555</td><td>2,956</td><td>3,592</td></tr>
+            <tr><td>Finance Cost</td><td>2,698</td><td>2,500</td><td>3,573</td><td>3,601</td><td>3,338</td></tr>
+            <tr class="row-header"><td>Earnings Before Tax</td><td>562</td><td>635</td><td>1,022</td><td>6,328</td><td>20,454</td></tr>
+            <tr><td>EBT Margin %</td><td>1.7%</td><td>1.8%</td><td>2.7%</td><td>13.6%</td><td class="positive">27.2%</td></tr>
+            <tr><td>Tax Expenses</td><td>0</td><td>0</td><td>0</td><td>0</td><td class="negative">1,313</td></tr>
+            <tr class="row-header"><td>Net Profit</td><td>562</td><td>1,185</td><td>1,022</td><td>6,328</td><td class="positive">19,141</td></tr>
+            <tr><td>Net Profit Margin</td><td>1.7%</td><td>3.4%</td><td>2.7%</td><td>13.6%</td><td class="positive">25.4%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BALANCE SHEET PAGE -->
+  <div id="page-balance" class="page">
+    <div class="section-title">Balance Sheet</div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">Assets Composition Over Years (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="assetsChart" height="220"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Equity vs Debt vs Total Assets (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="capitalChart" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:18px">
+      <div class="chart-card-title">Balance Sheet Summary</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>FY21</th><th>FY22</th><th>FY23</th><th>FY24</th><th>FY25</th></tr></thead>
+          <tbody>
+            <tr class="row-header"><td>NON-CURRENT ASSETS</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Plant, Property & Equipment</td><td>14,126</td><td>14,930</td><td>13,962</td><td>19,434</td><td>19,807</td></tr>
+            <tr><td>Right of Use Asset</td><td>2,165</td><td>2,764</td><td>2,525</td><td>3,002</td><td>2,746</td></tr>
+            <tr><td>Intangible Assets</td><td>8,036</td><td>8,215</td><td>9,299</td><td>9,013</td><td>9,206</td></tr>
+            <tr><td>Investments & Others</td><td>6,164</td><td>6,628</td><td>7,869</td><td>6,812</td><td>4,916</td></tr>
+            <tr class="row-header"><td>Total Non-Current Assets</td><td>30,491</td><td>32,536</td><td>33,655</td><td>37,261</td><td>36,675</td></tr>
+            <tr class="row-header"><td>CURRENT ASSETS</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Inventories</td><td>6,484</td><td>6,709</td><td>5,877</td><td>6,041</td><td>8,024</td></tr>
+            <tr><td>Trade Receivables</td><td>6,428</td><td>4,675</td><td>4,767</td><td>7,912</td><td>10,948</td></tr>
+            <tr><td>Investments</td><td>229</td><td>2,343</td><td>5,517</td><td>8,430</td><td>15,816</td></tr>
+            <tr><td>Cash & Equivalents</td><td>608</td><td>1,458</td><td>997</td><td>893</td><td>3,657</td></tr>
+            <tr><td>Other Current Assets</td><td>8,197</td><td>6,797</td><td>4,438</td><td>4,408</td><td>5,617</td></tr>
+            <tr class="row-header"><td>Total Current Assets</td><td>21,945</td><td>21,983</td><td>21,596</td><td>26,684</td><td>44,061</td></tr>
+            <tr class="row-header"><td>TOTAL ASSETS</td><td>52,436</td><td>54,519</td><td>55,251</td><td>63,945</td><td>80,736</td></tr>
+            <tr class="row-header"><td>EQUITY</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Share Capital</td><td>47,383</td><td>47,383</td><td>45,585</td><td>45,585</td><td>45,585</td></tr>
+            <tr><td>Other Equity</td><td class="negative">(47,153)</td><td class="negative">(45,961)</td><td class="negative">(43,176)</td><td class="negative">(36,971)</td><td class="negative">(17,932)</td></tr>
+            <tr class="row-header"><td>Total Equity</td><td class="positive">230</td><td class="positive">1,422</td><td class="positive">2,409</td><td class="positive">8,614</td><td class="positive">27,653</td></tr>
+            <tr><td>Long-term Borrowings</td><td>27,445</td><td>28,578</td><td>26,455</td><td>23,772</td><td>21,088</td></tr>
+            <tr><td>Short-term Borrowings</td><td>2,907</td><td>3,047</td><td>4,384</td><td>4,789</td><td>2,700</td></tr>
+            <tr class="row-header"><td>Total Liabilities</td><td>52,206</td><td>53,097</td><td>52,842</td><td>55,331</td><td>53,083</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASH FLOW PAGE -->
+  <div id="page-cashflow" class="page">
+    <div class="section-title">Cash Flow Statement</div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">3-Way Cash Flow (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="cfChart" height="220"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Operating Cash vs Net Profit (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="cfVsProfitChart" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:18px">
+      <div class="chart-card-title">Cash Flow Statement</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>FY21</th><th>FY22</th><th>FY23</th><th>FY24</th><th>FY25</th></tr></thead>
+          <tbody>
+            <tr class="row-header"><td>Operating Activities (A)</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Profit before tax</td><td>562</td><td>635</td><td>1,022</td><td>6,328</td><td>20,454</td></tr>
+            <tr><td>Cash from Operations</td><td>748</td><td>7,451</td><td>7,199</td><td>13,222</td><td>22,001</td></tr>
+            <tr><td>Taxes Paid</td><td class="negative">(49)</td><td class="negative">(219)</td><td class="positive">472</td><td class="positive">383</td><td class="negative">(355)</td></tr>
+            <tr class="row-header"><td>Net Operating CF (A)</td><td class="positive">699</td><td class="positive">7,233</td><td class="positive">7,671</td><td class="positive">13,605</td><td class="positive">21,646</td></tr>
+            <tr class="row-header"><td>Investing Activities (B)</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Capex (PPE)</td><td class="negative">(6,087)</td><td class="negative">(2,772)</td><td class="negative">(2,820)</td><td class="negative">(4,838)</td><td class="negative">(4,310)</td></tr>
+            <tr><td>Investment Activities</td><td class="positive">4,724</td><td class="negative">(2,074)</td><td class="negative">(2,980)</td><td class="negative">(2,450)</td><td class="negative">(10,647)</td></tr>
+            <tr class="row-header"><td>Net Investing CF (B)</td><td class="negative">(1,362)</td><td class="negative">(4,599)</td><td class="negative">(3,601)</td><td class="negative">(7,714)</td><td class="negative">(14,874)</td></tr>
+            <tr class="row-header"><td>Financing Activities (C)</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Proceeds from Borrowings</td><td class="positive">2,907</td><td class="positive">31,607</td><td class="positive">1,628</td><td class="negative">(155)</td><td>0</td></tr>
+            <tr><td>Repayment of Borrowings</td><td>0</td><td class="negative">(30,278)</td><td class="negative">(2,430)</td><td class="negative">(2,139)</td><td class="negative">(2,700)</td></tr>
+            <tr><td>Interest Paid</td><td class="negative">(2,541)</td><td class="negative">(2,607)</td><td class="negative">(2,618)</td><td class="negative">(2,555)</td><td class="negative">(2,217)</td></tr>
+            <tr class="row-header"><td>Net Financing CF (C)</td><td class="positive">12</td><td class="negative">(1,648)</td><td class="negative">(4,322)</td><td class="negative">(5,823)</td><td class="negative">(5,590)</td></tr>
+            <tr class="row-header"><td>Net Change in Cash (A+B+C)</td><td class="negative">(651)</td><td class="positive">986</td><td class="negative">(252)</td><td class="positive">67</td><td class="positive">1,182</td></tr>
+            <tr class="row-header"><td>Closing Cash Balance</td><td>608</td><td>1,459</td><td>997</td><td>893</td><td class="positive">3,657</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RATIOS PAGE -->
+  <div id="page-ratios" class="page">
+    <div class="section-title">Ratio Analysis</div>
+    <div class="charts-3col">
+      <div class="chart-card">
+        <div class="chart-card-title">Profitability Ratios (%)</div>
+        <div class="chart-wrap"><canvas id="profRatioChart" height="200"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Leverage Ratios (x)</div>
+        <div class="chart-wrap"><canvas id="levRatioChart" height="200"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Liquidity Ratios (x)</div>
+        <div class="chart-wrap"><canvas id="liqRatioChart" height="200"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:18px">
+      <div class="chart-card-title">Complete Ratio Table with Interpretation</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ratio</th><th>FY21</th><th>FY22</th><th>FY23</th><th>FY24</th><th>FY25</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="row-header"><td colspan="7">Profitability</td></tr>
+            <tr><td>Revenue Growth %</td><td>—</td><td>7.2%</td><td>9.6%</td><td>22.0%</td><td>61.3%</td><td><span class="ratio-badge badge-good">Excellent</span></td></tr>
+            <tr><td>EBITDA Margin %</td><td>19.9%</td><td>19.2%</td><td>18.7%</td><td>27.6%</td><td>36.4%</td><td><span class="ratio-badge badge-good">Excellent</span></td></tr>
+            <tr><td>Net Profit Margin %</td><td>1.7%</td><td>3.4%</td><td>2.7%</td><td>13.6%</td><td>25.4%</td><td><span class="ratio-badge badge-good">Excellent</span></td></tr>
+            <tr class="row-header"><td colspan="7">Leverage</td></tr>
+            <tr><td>Debt to Equity (x)</td><td>145.1</td><td>24.9</td><td>14.3</td><td>3.8</td><td>1.0</td><td><span class="ratio-badge badge-good">Improving</span></td></tr>
+            <tr><td>Debt to EBITDA (x)</td><td>5.16</td><td>5.28</td><td>4.82</td><td>2.55</td><td>1.02</td><td><span class="ratio-badge badge-good">Healthy</span></td></tr>
+            <tr><td>Total Debt / Total Assets</td><td>0.64</td><td>0.65</td><td>0.62</td><td>0.51</td><td>0.35</td><td><span class="ratio-badge badge-good">Declining</span></td></tr>
+            <tr class="row-header"><td colspan="7">Coverage</td></tr>
+            <tr><td>Interest Coverage (x)</td><td>1.21</td><td>1.25</td><td>1.29</td><td>2.76</td><td>7.13</td><td><span class="ratio-badge badge-good">Strong</span></td></tr>
+            <tr><td>DSCR</td><td>2.76</td><td>(0.24)</td><td>29.82</td><td>26.43</td><td>(778.6)</td><td><span class="ratio-badge badge-warn">Volatile</span></td></tr>
+            <tr class="row-header"><td colspan="7">Liquidity</td></tr>
+            <tr><td>Current Ratio (x)</td><td>1.25</td><td>1.35</td><td>1.25</td><td>1.25</td><td>2.08</td><td><span class="ratio-badge badge-good">Strong</span></td></tr>
+            <tr><td>Quick Ratio (x)</td><td>0.88</td><td>0.94</td><td>0.91</td><td>0.97</td><td>1.70</td><td><span class="ratio-badge badge-good">Strong</span></td></tr>
+            <tr class="row-header"><td colspan="7">Working Capital (Days)</td></tr>
+            <tr><td>Debtor Days</td><td>72.0</td><td>48.9</td><td>45.5</td><td>61.9</td><td>53.1</td><td><span class="ratio-badge badge-warn">Watch</span></td></tr>
+            <tr><td>Creditor Days</td><td>106.1</td><td>94.2</td><td>78.2</td><td>62.2</td><td>41.0</td><td><span class="ratio-badge badge-warn">Declining</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRENDS PAGE -->
+  <div id="page-trends" class="page">
+    <div class="section-title">Trend Analysis</div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">Revenue Growth & EBITDA Margin Trend</div>
+        <div class="chart-wrap"><canvas id="trendGrowthChart" height="220"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Working Capital Days Trend</div>
+        <div class="chart-wrap"><canvas id="wcChart" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-2col">
+      <div class="chart-card">
+        <div class="chart-card-title">Interest Coverage vs Debt/EBITDA</div>
+        <div class="chart-wrap"><canvas id="coverageChart" height="220"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Equity Build-up (₹ Lakhs)</div>
+        <div class="chart-wrap"><canvas id="equityChart" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="container">
+  GMR Aero Technic · GACEL SIP Analysis · All figures in ₹ Lakhs · FY2021–FY2025
+</footer>
+
+<script>
+const years = ['FY21','FY22','FY23','FY24','FY25'];
+const C = {
+  blue: '#4fc3f7', purple:'#7c4dff', green:'#00e5a0',
+  red:'#ff6b6b', yellow:'#ffd54f', orange:'#ff9800',
+  blueA:'rgba(76,195,247,0.15)', greenA:'rgba(0,229,160,0.12)',
+  redA:'rgba(255,107,107,0.12)', purpleA:'rgba(124,77,255,0.12)',
+  yellowA:'rgba(255,213,79,0.12)',
+};
+const gridColor = 'rgba(255,255,255,0.05)';
+const tickColor = '#7a8499';
+
+Chart.defaults.color = tickColor;
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+function baseOpts(yLabel='') {
+  return {
+    responsive:true,
+    plugins:{legend:{labels:{color:tickColor,boxWidth:10,font:{size:11}}},tooltip:{backgroundColor:'#1a2035',titleColor:'#e8edf5',bodyColor:'#a0aabe',borderColor:'rgba(255,255,255,0.1)',borderWidth:1}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:tickColor}},
+      y:{grid:{color:gridColor},ticks:{color:tickColor},title:{display:!!yLabel,text:yLabel,color:tickColor}}
+    }
+  };
+}
+
+// Revenue chart
+new Chart(document.getElementById('revenueChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[{
+    label:'Revenue (₹L)',data:[32565,34905,38240,46670,75299],
+    backgroundColor:[C.blueA,C.blueA,C.blueA,C.blueA,'rgba(76,195,247,0.7)'],
+    borderColor:[C.blue,C.blue,C.blue,C.blue,C.blue],borderWidth:2,borderRadius:6
+  }]},
+  options:{...baseOpts('₹ Lakhs'),plugins:{...baseOpts().plugins,legend:{display:false}}}
+});
+
+// Profit chart
+new Chart(document.getElementById('profitChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'EBITDA',data:[6465,6710,7150,12886,27384],backgroundColor:C.greenA,borderColor:C.green,borderWidth:2,borderRadius:4},
+    {label:'Net Profit',data:[562,1185,1022,6328,19141],backgroundColor:C.yellowA,borderColor:C.yellow,borderWidth:2,borderRadius:4}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// Margin chart
+new Chart(document.getElementById('marginChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'EBITDA Margin %',data:[19.85,19.22,18.70,27.61,36.37],borderColor:C.green,backgroundColor:'rgba(0,229,160,0.08)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.green},
+    {label:'Net Profit Margin %',data:[1.72,3.40,2.67,13.56,25.42],borderColor:C.yellow,backgroundColor:'rgba(255,213,79,0.06)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.yellow}
+  ]},
+  options:baseOpts('%')
+});
+
+// Debt chart
+new Chart(document.getElementById('debtChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'Total Debt',data:[33339,35423,34481,32806,27898],borderColor:C.red,backgroundColor:'rgba(255,107,107,0.1)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.red},
+    {label:'Total Equity',data:[230,1422,2409,8614,27653],borderColor:C.blue,backgroundColor:'rgba(76,195,247,0.08)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.blue}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// Rev vs Exp
+new Chart(document.getElementById('revExpChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Revenue',data:[32565,34905,38240,46670,75299],backgroundColor:'rgba(76,195,247,0.5)',borderColor:C.blue,borderWidth:2,borderRadius:4},
+    {label:'Total Expenses',data:[26875,28914,32061,35489,50340],backgroundColor:'rgba(255,107,107,0.4)',borderColor:C.red,borderWidth:2,borderRadius:4}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// Cost donut FY25
+new Chart(document.getElementById('costDonut'),{
+  type:'doughnut',
+  data:{labels:['Stores & Spares','Employee Expense','Other Expenses','Ops & Maint'],
+    datasets:[{data:[12277,17478,19770,815],
+      backgroundColor:['rgba(76,195,247,0.7)','rgba(0,229,160,0.7)','rgba(124,77,255,0.7)','rgba(255,213,79,0.7)'],
+      borderColor:['#0a0d14'],borderWidth:2}]},
+  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:tickColor,boxWidth:10}},tooltip:{backgroundColor:'#1a2035',titleColor:'#e8edf5',bodyColor:'#a0aabe'}},cutout:'60%'}
+});
+
+// Waterfall (simple grouped)
+new Chart(document.getElementById('waterfallChart'),{
+  type:'bar',
+  data:{labels:['Revenue','(-) Expenses','= EBITDA','(-) D&A','(-) Finance Cost','= EBT','(-) Tax','= Net Profit'],
+    datasets:[{
+      label:'FY25 (₹L)',
+      data:[75299,-50340,27384,-3592,-3338,20454,-1313,19141],
+      backgroundColor:d=>{const v=d.raw;return v>0?'rgba(0,229,160,0.6)':'rgba(255,107,107,0.6)'},
+      borderColor:d=>{const v=d.raw;return v>0?C.green:C.red},
+      borderWidth:2,borderRadius:4
+    }]},
+  options:{...baseOpts('₹ Lakhs'),plugins:{...baseOpts().plugins,legend:{display:false}}}
+});
+
+// Assets
+new Chart(document.getElementById('assetsChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Non-Current Assets',data:[30491,32536,33655,37261,36675],backgroundColor:'rgba(76,195,247,0.5)',borderColor:C.blue,borderWidth:1,borderRadius:3},
+    {label:'Current Assets',data:[21945,21983,21596,26684,44061],backgroundColor:'rgba(0,229,160,0.5)',borderColor:C.green,borderWidth:1,borderRadius:3}
+  ]},
+  options:{...baseOpts('₹ Lakhs'),scales:{...baseOpts().scales,x:{stacked:true},y:{stacked:true,grid:{color:gridColor},ticks:{color:tickColor}}}}
+});
+
+// Capital structure
+new Chart(document.getElementById('capitalChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'Total Assets',data:[52436,54519,55251,63945,80736],borderColor:C.blue,tension:0.4,pointRadius:5,pointBackgroundColor:C.blue,fill:false},
+    {label:'Total Equity',data:[230,1422,2409,8614,27653],borderColor:C.green,tension:0.4,pointRadius:5,pointBackgroundColor:C.green,fill:false},
+    {label:'Total Debt',data:[33339,35423,34481,32806,27898],borderColor:C.red,tension:0.4,pointRadius:5,pointBackgroundColor:C.red,fill:false}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// CF chart
+new Chart(document.getElementById('cfChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Operating CF',data:[699,7233,7671,13605,21646],backgroundColor:'rgba(0,229,160,0.6)',borderColor:C.green,borderWidth:2,borderRadius:4},
+    {label:'Investing CF',data:[-1362,-4599,-3601,-7714,-14874],backgroundColor:'rgba(255,107,107,0.5)',borderColor:C.red,borderWidth:2,borderRadius:4},
+    {label:'Financing CF',data:[12,-1648,-4322,-5823,-5590],backgroundColor:'rgba(124,77,255,0.5)',borderColor:C.purple,borderWidth:2,borderRadius:4}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// CF vs Profit
+new Chart(document.getElementById('cfVsProfitChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'Operating Cash Flow',data:[699,7233,7671,13605,21646],borderColor:C.green,backgroundColor:'rgba(0,229,160,0.1)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.green},
+    {label:'Net Profit',data:[562,1185,1022,6328,19141],borderColor:C.yellow,backgroundColor:'rgba(255,213,79,0.06)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:C.yellow}
+  ]},
+  options:baseOpts('₹ Lakhs')
+});
+
+// Profitability ratios
+new Chart(document.getElementById('profRatioChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'EBITDA Margin %',data:[19.85,19.22,18.70,27.61,36.37],borderColor:C.green,tension:0.4,pointRadius:5,pointBackgroundColor:C.green},
+    {label:'Net Profit Margin %',data:[1.72,3.40,2.67,13.56,25.42],borderColor:C.yellow,tension:0.4,pointRadius:5,pointBackgroundColor:C.yellow}
+  ]},
+  options:baseOpts('%')
+});
+
+// Leverage
+new Chart(document.getElementById('levRatioChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Debt/EBITDA',data:[5.16,5.28,4.82,2.55,1.02],backgroundColor:'rgba(255,107,107,0.5)',borderColor:C.red,borderWidth:2,borderRadius:4},
+    {label:'Debt/Assets',data:[0.64,0.65,0.62,0.51,0.35],backgroundColor:'rgba(255,152,0,0.4)',borderColor:C.orange,borderWidth:2,borderRadius:4}
+  ]},
+  options:baseOpts('Ratio (x)')
+});
+
+// Liquidity
+new Chart(document.getElementById('liqRatioChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'Current Ratio',data:[1.25,1.35,1.25,1.25,2.08],borderColor:C.blue,tension:0.4,pointRadius:5,pointBackgroundColor:C.blue},
+    {label:'Quick Ratio',data:[0.88,0.94,0.91,0.97,1.70],borderColor:C.purple,tension:0.4,pointRadius:5,pointBackgroundColor:C.purple}
+  ]},
+  options:baseOpts('Ratio (x)')
+});
+
+// Trends: growth vs margin
+new Chart(document.getElementById('trendGrowthChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Revenue Growth %',data:[0,7.19,9.55,22.05,61.34],type:'bar',backgroundColor:'rgba(76,195,247,0.4)',borderColor:C.blue,borderWidth:2,borderRadius:4,yAxisID:'y'},
+    {label:'EBITDA Margin %',data:[19.85,19.22,18.70,27.61,36.37],type:'line',borderColor:C.green,tension:0.4,pointRadius:5,pointBackgroundColor:C.green,yAxisID:'y1'}
+  ]},
+  options:{responsive:true,plugins:{legend:{labels:{color:tickColor,boxWidth:10}},tooltip:{backgroundColor:'#1a2035',titleColor:'#e8edf5',bodyColor:'#a0aabe'}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:tickColor}},
+      y:{grid:{color:gridColor},ticks:{color:tickColor},position:'left',title:{display:true,text:'Growth %',color:tickColor}},
+      y1:{grid:{drawOnChartArea:false},ticks:{color:tickColor},position:'right',title:{display:true,text:'Margin %',color:tickColor}}
+    }}
+});
+
+// Working capital days
+new Chart(document.getElementById('wcChart'),{
+  type:'line',
+  data:{labels:years,datasets:[
+    {label:'Debtor Days',data:[72.0,48.9,45.5,61.9,53.1],borderColor:C.yellow,tension:0.4,pointRadius:5,pointBackgroundColor:C.yellow},
+    {label:'Creditor Days',data:[106.1,94.2,78.2,62.2,41.0],borderColor:C.red,tension:0.4,pointRadius:5,pointBackgroundColor:C.red,borderDash:[5,5]}
+  ]},
+  options:baseOpts('Days')
+});
+
+// Coverage
+new Chart(document.getElementById('coverageChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[
+    {label:'Interest Coverage (x)',data:[1.21,1.25,1.29,2.76,7.13],backgroundColor:'rgba(0,229,160,0.5)',borderColor:C.green,borderWidth:2,borderRadius:4,yAxisID:'y'},
+    {label:'Debt/EBITDA (x)',data:[5.16,5.28,4.82,2.55,1.02],type:'line',borderColor:C.red,tension:0.4,pointRadius:5,pointBackgroundColor:C.red,yAxisID:'y1'}
+  ]},
+  options:{responsive:true,plugins:{legend:{labels:{color:tickColor,boxWidth:10}},tooltip:{backgroundColor:'#1a2035',titleColor:'#e8edf5',bodyColor:'#a0aabe'}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:tickColor}},
+      y:{grid:{color:gridColor},ticks:{color:tickColor},position:'left'},
+      y1:{grid:{drawOnChartArea:false},ticks:{color:tickColor},position:'right'}
+    }}
+});
+
+// Equity buildup
+new Chart(document.getElementById('equityChart'),{
+  type:'bar',
+  data:{labels:years,datasets:[{
+    label:'Total Equity',data:[230,1422,2409,8614,27653],
+    backgroundColor:['rgba(76,195,247,0.3)','rgba(76,195,247,0.4)','rgba(76,195,247,0.5)','rgba(76,195,247,0.6)','rgba(76,195,247,0.8)'],
+    borderColor:C.blue,borderWidth:2,borderRadius:6
+  }]},
+  options:{...baseOpts('₹ Lakhs'),plugins:{...baseOpts().plugins,legend:{display:false}}}
+});
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
